@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Application</title>
+
+    <!-- Javascript -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="main.css" />
+</head>
+
+<script>
+    
+    const userName = getName();
+
+    var socket = io();
+
+    window.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+        bindMessageAreas();
+        bindSendButton();
+        bindEnterToSend();
+        fetch('http://localhost:3000/messages').then(res => res.json()).then((out) => {
+            getOldMessages( JSON.parse(out) )
+        }).catch(err => console.error(err));
+    }
+
+    socket.on("sendMessage", function(msg, sender, time) {
+        const message = document.createElement("p");
+        message.appendChild(document.createTextNode(time + " " + sender + ": " + msg));
+        oldMessages.appendChild(message);
+        message.classList.add("blueBubble");
+        oldMessages.appendChild(document.createElement("br"));
+        oldMessages.appendChild(document.createElement("br"));
+        oldMessages.scrollTop =  oldMessages.scrollHeight;
+        getNames();
+    });
+
+    async function getNames() {
+        fetch('http://localhost:3000/names').then(res => res.json()).then((out) => {
+            getNamesInChat( JSON.parse(out) )
+        }).catch(err => console.error(err));   
+    }
+
+    function getNamesInChat( nameArr ) {
+        let nameString = "";
+        for(let i = 0; i < nameArr.length; i++ ){
+            if( nameArr[i] != userName ) {
+                nameString += " " + nameArr[i];
+            }
+        }
+        if( nameString == null || nameString == "") {
+            titleWords.innerText = "Simple Messenger";
+        }
+        else {            
+            titleWords.innerText = "You are chatting with:" + nameString;
+        }
+    }
+
+    function getOldMessages( messageArr ) {
+        for(let i = 0; i < messageArr.length; i++ ){
+            const message = document.createElement("p");
+            message.appendChild(document.createTextNode(messageArr[i]));
+            oldMessages.appendChild(message);
+            if( messageArr[i].slice( 9, messageArr[i].indexOf(":",4) ) == userName ){
+                message.classList.add("grayBubble");
+            }
+            else{
+                message.classList.add("blueBubble");
+            }
+            oldMessages.appendChild(document.createElement("br"));
+            oldMessages.appendChild(document.createElement("br"));
+            oldMessages.scrollTop =  oldMessages.scrollHeight;                          
+        }
+    }
+
+    function bindMessageAreas() {
+        const newMessageText = document.getElementById("newMessageText");
+        const oldMessages = document.getElementById("oldMessages");
+        const titleWords = document.getElementById("titleWords");
+    }
+
+    function bindSendButton() {
+        const sendButton = document.getElementById("sendButton");
+        sendButton.addEventListener('click', (event) => {
+            if( newMessageText.value.length > 0 ){
+                sendMessage(newMessageText.value, userName);
+            }
+        });
+    }
+
+    function bindEnterToSend() {
+        document.addEventListener('keydown', (event) => {
+            if( event.key == "Enter" && newMessageText.value.length > 0 ){
+                sendMessage(newMessageText.value, userName);
+            }
+        });
+    }
+
+    function sendMessage(messageText, userName) {
+        const message = document.createElement("p");
+        const now = new Date();
+        const withPmAm = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit',});
+        message.appendChild(document.createTextNode(withPmAm + " " + userName + ": " + messageText));
+        oldMessages.appendChild(message);        
+        message.classList.add("grayBubble");
+        oldMessages.appendChild(document.createElement("br"));
+        oldMessages.appendChild(document.createElement("br"));
+
+        socket.emit("sendMessage", newMessageText.value, userName, withPmAm);
+        newMessageText.value = "";
+        oldMessages.scrollTop =  oldMessages.scrollHeight;
+    }
+
+    function getName() {
+        let name  = prompt("Enter your name:");
+        while( name == null || name == "" ) {
+            name  = prompt("Enter your name:");
+        }
+        return name;
+    }
+</script>
+
+<body>
+    <div id="wrapperCSS">
+
+        <div id="header">
+            <h1 id="titleWords">Simple Messenger</h1>
+        </div>
+
+        <div id="oldMessages">
+            <br>
+        </div>
+
+        <div id="newMessage">
+            <input type="text" id="newMessageText" placeholder="Just start typing...">
+            <input type="button" id="sendButton" value="Send"> 
+        </div>
+        
+    </div>
+</body>
+
+</html>
